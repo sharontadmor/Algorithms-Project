@@ -31,6 +31,9 @@ def get_data():
         return
     poi = response.json()[POI]  # get a list of only the points of interest.
     df = pd.json_normalize(poi)  # add data to DataFrame.
-    df = df[[POI_NAME, X, Y]].sort_values(POI_NAME, ignore_index=True)  #  keep only relevant data.
+    df = df[[POI_NAME, X, Y]].sort_values(POI_NAME, ignore_index=True)  # keep only relevant data.
+    df = df.rename(columns={POI_NAME : "name", X : "x", Y : "y"}) # rename columns.
     return df
 
+
+# print(get_data())
