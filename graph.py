@@ -1,18 +1,12 @@
-from node import Node
-import numpy as np
-import pandas as pd
-
-
 class Graph:
     """
-    This class represents a directed weighed graph,
-    whose nodes are points on two-dimentional cartesian axis system.
+    This class represents a static directed weighed graph,
     Graph representation method is adjacency list.
     """
-    def __init__(self, nodes: pd.DataFrame, edges: list):
-        self.__size = nodes.shape[0]
-        self.__nodes = []
-        self.__set_nodes(nodes)
+    def __init__(self, nodes: list[int], edges: list):
+        self.__size = len(nodes)
+        self.__nodes = nodes
+        self.__adj_list = [None] * len(nodes)
         self.__set_adjacencies(edges)
         """
         This class represents a full weighed graph.
@@ -26,6 +20,45 @@ class Graph:
         self.__adjacencies = np.full([self.__size, self.__size], np.nan)
         self.__set_adjacencies()
         """
+    
+    class Neighbor:
+        """
+        This class represents a node in a linked list.
+        """
+
+        def __init__(self, data: int, weight: float, next=None):
+            self.__data = data
+            self.__edge_weight = weight
+            self.__next = next
+        
+        def get_data(self):
+            """
+            Returns:
+                int: index of this node.
+            """
+            return self.__data
+        
+        def get_weight(self):
+            """
+            Returns:
+                float: weight of edge.
+            """
+            return self.__edge_weight
+        
+        def get_next(self):
+            """
+            Returns:
+                Neighbor: next node in the linked list.
+            """
+            return self.__next
+        
+        def set_next(self, node):
+            """
+            Args:
+                node (Neighbor): next node in the linked list.
+            """
+            self.__next = node
+    
 
     def get_size(self):
         """
@@ -33,71 +66,136 @@ class Graph:
             number of nodes in the graph.
         """
         return self.__size
-
+    
     def get_nodes(self):
         """
         Returns:
-            a list containing Node objects.
+            list[int]: list of nodes in this graph.
         """
         return self.__nodes
-
-    def __set_nodes(self, df: pd.DataFrame):
-        """
-        sets the nodes of the graph as the points given in df.
-        Args:
-            df (pd.DataFrame): a pandas data frame containing the names of poi (points of interest) and their datum-points.
-        """
-        # create pandas Series where each element is a Node object, than convert to list:
-        self.__nodes = df.apply(self.create_node, axis=1).tolist()
-
-    def create_node(self, row: pd.Series):
+    
+    def get_node(self, i: int):
         """
         Args:
-            row (pandas Series): DataFrame row.
+            i (int): index of node in nodes list.
+
         Returns:
-            Node: a Node object.
+            int: name of node in index i in nodes list.
         """
-        return Node(row["name"], [], row["x"], row["y"])
+        return self.__nodes[i]
+    
+    def get_adj_list(self):
+        """
+        linked list in the i'th cell is neighbors list of nodes j for each (i, j) is an edge.
+
+        Returns:
+            list: list of linked lists.
+        """
+        return self.__adj_list
+    
+    def get_adj_list_by_index(self, i: int):
+        """
+        linked list in the i'th cell is neighbors list of nodes j for each (i, j) is an edge.
+
+        Args:
+            i (int): index of node in nodes list.
+
+        Returns:
+            Neighbor: head of neighbors list.
+        """
+        return self.__adj_list[i]
+    
+    def get_adj_list_by_name(self, n: int):
+        """
+        linked list in the i'th cell is neighbors list of nodes j for each (i, j) is an edge.
+
+        Args:
+            n (int): name of node in nodes list.
+
+        Returns:
+            Neighbor: head of neighbors list.
+        """
+        idx = self.get_nodes().index(n)
+        return self.__adj_list[idx]
 
     def __set_adjacencies(self, edges: list):
         """
         adds edges to graph.
-        if edges list is None, sets the graph to be a full graph,
-        with the weight of each edge as the distance between two nodes.
-        else, sets the edges with weights specified in edges list.
 
         Args:
             edges (list): list of tuples (n, m, w), where there's an edge from n to m with weight w.
-            None if the graph is a full graph. 
         """
-        if not edges:
-            for i in range(self.get_size()):
-                n = self.get_nodes()[i]
-                for j in range(self.get_size()):
-                    if i != j:
-                        m = self.get_nodes()[j]
-                        n.get_neighbors().append((m, self.dist(n, m)))
-            return
         for edge in edges:
-            for i in range(self.get_size()):
-                n = self.get_nodes()[i]
-                if n.get_name() == edge[0]:
-                    for j in range(self.get_size()):
-                        m = self.get_nodes()[j]
-                        if m.get_name() == edge[1]:
-                            n.get_neighbors().append((m, edge[2]))
-
-    def dist(self, node1: Node, node2: Node):
+            self.add_edge(edge[0], edge[1], edge[2])
+    
+    def add_edge(self, s: int, t: int, w: float):
         """
         Args:
-            node1 (Node):  a Node object.
-            node2 (Node):  a Node object.
+            s (int): name of source node.
+            t (int): name of target node.
+            w (float): weight of new edge.
+        """
+        idx = self.get_nodes().index(s)
+        adj_list = self.get_adj_list_by_name(s)
+        if not adj_list:
+            # set first neighbor
+            self.__adj_list[idx] = Graph.Neighbor(t, w)
+        elif not self.edge(s, t, w):
+            # add neighbor to end of linked list
+            curr = adj_list
+            while curr.get_next():
+                curr = curr.get_next()
+            curr.set_next(Graph.Neighbor(t, w))
+    
+    def edge(self, s: int, t: int, w: float):
+        """
+        Args:
+            s (Node): name of source node.
+            t (Node): name of target node.
+            w (float): weight of new edge.
 
         Returns:
-            float: Euclidean distance between two nodes.
+            boolean: True if there is an edge from s to t, False otherwise.
         """
-        x1 = node1.get_x()
-        x2 = node2.get_x()
-        y1 = node1.get_y()
-        y2 = node2.get_y()
-        return (((x2 - x1) ** 2) + ((y2 - y1) ** 2)) ** 0.5
+        # nodes = self.get_adj_list()
+        # if s < 0 or s >= len(nodes):  # Check if s is a valid index
+        #     return False
+        curr = self.get_adj_list_by_name(s)
+        while curr:
+            if curr.get_data() == t and curr.get_weight() == w:
+                return True
+            curr = curr.get_next()
+        return False
+    
+    def in_deg(self, n: int):
+        """
+        Args:
+            n (int): name of node.
+
+        Returns:
+            int: in degree of n.
+        """
+        in_deg = 0
+        for i in range(self.get_size()):
+            curr = self.get_adj_list_by_index(i)
+            while curr:
+                if curr.get_data() == n:
+                    in_deg += 1
+                curr = curr.get_next()
+        return in_deg
+    
+    def out_deg(self, n: int):
+        """
+        Args:
+            n (int): name of node.
+
+        Returns:
+            int: out degree of n.
+        """
+        out_deg = 0
+        curr = self.get_adj_list_by_name(n)
+        while curr:
+            out_deg += 1
+            curr = curr.get_next()
+        return out_deg
+    
